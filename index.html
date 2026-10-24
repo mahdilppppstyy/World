@@ -1,0 +1,790 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>انتخاب کشور</title>
+<!-- اول نسخه‌ی خودِ هاست (پوشه‌ی vendor)، اگر نبود از اینترنت جهانی -->
+<script src="vendor/telegram-web-app.js"></script>
+<script>window.Telegram || document.write('<script src="https://telegram.org/js/telegram-web-app.js"><\/script>')</script>
+<script src="vendor/d3.min.js"></script>
+<script>window.d3 || document.write('<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"><\/script>')</script>
+<style>
+  :root {
+    --bg: #0f1218;
+    --card: #181b22;
+    --card-2: #1f232c;
+    --text: #f2efe8;
+    --hint: #8d93a0;
+    --gold: #e8c46c;
+    --gold-soft: rgba(232, 196, 108, .16);
+    --line: #2a2f3a;
+  }
+  * { box-sizing: border-box; margin: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: Vazirmatn, Tahoma, system-ui, sans-serif;
+    background: radial-gradient(120% 60% at 50% 0%, #1d1a12 0%, var(--bg) 60%) fixed;
+    color: var(--text); min-height: 100vh;
+  }
+  .top { padding: 20px 14px 10px; }
+  h1 { font-size: 20px; line-height: 1.6; }
+  .sub { color: var(--hint); font-size: 14px; margin-top: 2px; }
+  .badge {
+    display: inline-block; margin-top: 8px; padding: 3px 12px; border-radius: 999px;
+    font-size: 12.5px; background: var(--gold-soft); color: var(--gold); border: 1px solid rgba(232,196,108,.35);
+  }
+  .searchwrap { position: sticky; top: 0; z-index: 2; padding: 8px 14px 12px; background: linear-gradient(var(--bg) 70%, transparent); }
+  .search {
+    width: 100%; padding: 14px 16px; font: inherit; font-size: 15px; color: var(--text);
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+  }
+  .search::placeholder { color: var(--hint); }
+  .search:focus-visible { outline: 2px solid var(--gold); }
+  .grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+    padding: 4px 14px calc(100px + env(safe-area-inset-bottom));
+  }
+  .c {
+    background: linear-gradient(160deg, var(--card-2), var(--card));
+    border: 1px solid var(--line); border-radius: 18px; padding: 14px 14px 12px;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+    cursor: pointer; min-height: 132px; position: relative;
+  }
+  .c[aria-disabled="true"] { cursor: default; }
+  .flag {
+    width: 46px; height: 46px; border-radius: 50%; overflow: hidden; flex: none;
+    border: 2px solid rgba(255,255,255,.25); box-shadow: 0 2px 8px rgba(0,0,0,.5);
+    display: flex; align-items: center; justify-content: center; font-size: 28px; background: #2b3039;
+  }
+  .flag img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .name { font-size: 17px; line-height: 1.5; }
+  .meta { font-size: 13px; color: var(--hint); }
+  .mine {
+    font-size: 12px; color: #1a1405; background: var(--gold); border-radius: 999px; padding: 2px 10px; font-weight: 600;
+  }
+  .c[aria-selected="true"], .c.me {
+    border-color: var(--gold); background: linear-gradient(160deg, #2a2415, var(--card));
+    box-shadow: 0 0 0 1px var(--gold) inset, 0 4px 18px rgba(232,196,108,.12);
+  }
+  .c:focus-visible { outline: 2px solid var(--gold); }
+  .sec {
+    grid-column: 1 / -1; font-size: 14px; font-weight: 600; color: var(--gold);
+    padding: 10px 2px 0; display: flex; align-items: center; gap: 8px;
+  }
+  .sec::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .sec small { color: var(--hint); font-weight: 400; font-size: 12.5px; }
+  .c.t-plus { border-color: rgba(232,196,108,.55); }
+  .c.t-premium { border-color: rgba(170,190,255,.4); }
+  [hidden] { display: none !important; }
+  .tabs { display: flex; gap: 8px; padding: 2px 14px 8px; }
+  .tab {
+    flex: 1; padding: 10px 0; font: inherit; font-size: 14px; color: var(--hint); cursor: pointer;
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  }
+  .tab.on { color: var(--gold); border-color: var(--gold); background: var(--gold-soft); }
+  .mapview { padding: 4px 14px calc(100px + env(safe-area-inset-bottom)); }
+  .globewrap {
+    position: relative; width: 100%; aspect-ratio: 1 / 1; overflow: hidden;
+    border-radius: 24px; border: 1px solid var(--line);
+    background: radial-gradient(circle at 50% 50%, #0d1a2b 0%, #070a10 72%);
+  }
+  #globe { width: 100%; height: 100%; display: block; touch-action: none; }
+  .zoom { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; }
+  .zoom button {
+    width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); cursor: pointer;
+    background: rgba(24,27,34,.9); color: var(--text); font-size: 18px; font-family: inherit;
+  }
+  .gmsg { position: absolute; left: 0; right: 0; bottom: 12px; text-align: center; color: var(--hint); font-size: 12.5px; pointer-events: none; }
+  .chip {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%); white-space: nowrap;
+    background: rgba(24,27,34,.92); border: 1px solid var(--line); border-radius: 999px; padding: 5px 14px; font-size: 13px;
+  }
+  .mycard {
+    margin-top: 12px; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 18px;
+    background: linear-gradient(160deg, #2a2415, var(--card)); border: 1px solid var(--gold);
+  }
+  .mycard .t1 { font-size: 12.5px; color: var(--hint); }
+  .mycard .t2 { font-size: 17px; line-height: 1.5; }
+  .mycard .t3 { font-size: 13px; color: var(--gold); }
+  .flag.sm { width: 30px; height: 30px; font-size: 18px; border-width: 1px; box-shadow: none; }
+  .flag.lg { width: 58px; height: 58px; font-size: 34px; border: 3px solid #c8793a; }
+  /* نوار پایین */
+  .nav {
+    position: fixed; left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 5;
+    display: flex; align-items: flex-end; justify-content: space-between; padding: 8px 8px 6px;
+    border-radius: 28px; background: rgba(24,27,34,.97); border: 1px solid var(--line);
+  }
+  .ni {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0;
+    font: inherit; font-size: 12.5px; color: var(--hint); background: none; border: 0; cursor: pointer;
+  }
+  .ni .ic { font-size: 22px; line-height: 1.2; }
+  .ni.on { color: var(--gold); }
+  .ni.home { margin-top: -38px; }
+  .ni.home .ic {
+    width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    background: var(--gold); font-size: 28px; border: 4px solid var(--bg); box-shadow: 0 0 0 2px rgba(232,196,108,.55);
+  }
+  .toast {
+    position: fixed; left: 50%; bottom: 120px; transform: translateX(-50%); z-index: 9; white-space: nowrap;
+    background: rgba(24,27,34,.96); border: 1px solid var(--gold); color: var(--text);
+    padding: 8px 18px; border-radius: 999px; font-size: 13.5px;
+  }
+  /* خانه */
+  .homeview { padding: 14px 14px calc(120px + env(safe-area-inset-bottom)); }
+  .hbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .hgrp { display: flex; align-items: center; gap: 10px; }
+  .ibtn {
+    width: 54px; height: 54px; border-radius: 50%; font-size: 22px; color: var(--text); cursor: pointer;
+    background: rgba(255,255,255,.05); border: 1px solid var(--line);
+  }
+  .ibtn.gold { border-color: rgba(232,196,108,.5); color: var(--gold); }
+  .avatar { position: relative; cursor: pointer; }
+  .lvl {
+    position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%); min-width: 30px; text-align: center;
+    background: #b8742f; color: #fff3cf; font-size: 13px; font-weight: 700; border-radius: 999px; padding: 0 8px;
+  }
+  .hero {
+    position: relative; border-radius: 28px; padding: 12px; overflow: hidden; border: 1px solid var(--line);
+    background:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 200' preserveAspectRatio='none'><polygon points='0,200 0,90 60,40 110,85 170,20 240,90 300,50 360,95 400,60 400,200' fill='%23ffffff' fill-opacity='.10'/></svg>") center top / 100% 55% no-repeat,
+      linear-gradient(170deg, #3a5748 0%, #1f3140 45%, #101a24 100%);
+  }
+  .hero-top { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 14px; }
+  .htitle { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 700; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; border-radius: 999px; font-size: 14px;
+    background: rgba(15,18,24,.55); border: 1px solid var(--line);
+  }
+  .pill.soft { color: var(--hint); font-size: 13px; padding: 4px 14px; }
+  .panel {
+    background: rgba(15,22,30,.62); border: 1px solid rgba(255,255,255,.10); border-radius: 24px; padding: 14px 18px 16px;
+  }
+  .panel hr { border: 0; border-top: 1px solid rgba(255,255,255,.10); margin: 12px 0; }
+  .lbl { font-size: 14px; color: #c9ccd3; }
+  .cash { font-size: 34px; font-weight: 700; margin: 6px 0 4px; direction: ltr; text-align: right; }
+  .inc { font-size: 15px; color: var(--hint); }
+  .stats { display: flex; align-items: center; }
+  .stat { flex: 1; }
+  .stat .val { font-size: 30px; font-weight: 700; margin-top: 4px; }
+  .stat .val.green { color: #3fd0a5; }
+  .stat .sub { font-size: 13px; color: var(--hint); }
+  .stat.mid { text-align: center; }
+  .safe { font-size: 44px; opacity: .85; }
+  .rowx { display: flex; align-items: center; justify-content: space-between; font-size: 15px; gap: 8px; }
+  .rowx b { font-size: 17px; }
+  .muted { color: var(--hint); font-size: 14px; }
+  .job {
+    margin-top: 14px; border-radius: 24px; padding: 14px 18px 16px; border: 1px solid var(--line);
+    background: linear-gradient(160deg, #2a2f36, #1a1d23);
+  }
+  .job .jt { font-size: 15px; color: var(--hint); }
+  .job .jn { font-size: 17px; margin: 6px 0 12px; }
+  .bar { height: 9px; border-radius: 999px; background: rgba(255,255,255,.10); overflow: hidden; direction: ltr; }
+  .bar i { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #4a7bd8, #7aa7ff); transition: width .9s linear; }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+  .tile {
+    position: relative; min-height: 170px; border-radius: 24px; padding: 14px; cursor: pointer; overflow: hidden;
+    border: 1px solid var(--line); display: flex; flex-direction: column; justify-content: flex-end; gap: 6px;
+  }
+  .tile h3 { font-size: 23px; }
+  .tile p { font-size: 14px; color: #d0d3da; line-height: 1.7; max-width: 62%; }
+  .tile .sh { position: absolute; left: 12px; bottom: 14px; font-size: 44px; }
+  .t-war { background: linear-gradient(160deg, #5a2a2a, #1f1418); }
+  .t-army { background: linear-gradient(160deg, #1f3a5c, #121a28); }
+  .t-dip { background: linear-gradient(160deg, #3d2a5a, #1a1424); }
+  .t-eco { background: linear-gradient(160deg, #1f4a3a, #121f1b); }
+  .empty { grid-column: 1 / -1; text-align: center; color: var(--hint); padding: 40px 0; }
+</style>
+</head>
+<body>
+  <div class="homeview" id="homeview" hidden>
+    <div class="hbar">
+      <div class="hgrp">
+        <div class="avatar" id="havatar"></div>
+        <button class="ibtn gold" id="hcup" type="button" aria-label="رتبه‌بندی">🏆</button>
+        <button class="ibtn" id="hbell" type="button" aria-label="اعلان‌ها">🔔</button>
+      </div>
+      <div class="hgrp">
+        <button class="ibtn" id="hmenu" type="button" aria-label="فهرست کشورها">☰</button>
+        <button class="ibtn gold" id="hgoal" type="button" aria-label="اهداف">🎯</button>
+        <span style="font-size:26px">👑</span>
+      </div>
+    </div>
+    <div class="hero" id="hero">
+      <div class="hero-top">
+        <div class="htitle"><span id="hflag"></span><span id="htitle"></span></div>
+        <span class="pill">🌐 <span id="hworld1"></span></span>
+      </div>
+      <div class="panel">
+        <div class="lbl">🪙 موجودی خزانه</div>
+        <div class="cash" id="hcash">$0</div>
+        <div class="inc" id="hinc"></div>
+        <hr>
+        <div class="stats">
+          <div class="stat"><div class="lbl">⚔ قدرت نظامی</div><div class="val" id="hpow">0</div></div>
+          <div class="stat mid"><div class="lbl">⚡ برق</div><div class="val green" id="hel">0+</div><div class="sub" id="helsub">0 از 0</div></div>
+          <div class="safe">🔐</div>
+        </div>
+        <hr>
+        <div class="rowx"><b>🌐 <span id="hworld2"></span></b><span class="muted" id="hend"></span></div>
+        <hr>
+        <div class="rowx"><b>🕒 <span id="hwx"></span></b><span class="pill soft" id="hfx"></span></div>
+        <div class="muted" id="hnext" style="margin-top:10px"></div>
+      </div>
+    </div>
+    <div class="job" id="hjob" hidden>
+      <div class="jt">در جریان</div>
+      <div class="jn" id="hjn"></div>
+      <div class="bar"><i id="hjbar"></i></div>
+    </div>
+    <div class="tiles">
+      <div class="tile t-war" data-soon="جنگ"><h3>جنگ</h3><p>حمله، عملیاتِ هوایی، نیروی دریایی و آبی‌خاکی</p><span class="sh">⚔️</span></div>
+      <div class="tile t-army" data-soon="ارتش"><h3>ارتش</h3><p>ساخت، تحقیق و جایِ یگان‌ها</p><span class="sh">🛡️</span></div>
+      <div class="tile t-dip" data-soon="دیپلماسی"><h3>دیپلماسی</h3><p>اتحاد، پیمان و پیام به کشورها</p><span class="sh">🤝</span></div>
+      <div class="tile t-eco" data-soon="اقتصاد"><h3>اقتصاد</h3><p>ساخت‌وساز، منابع و تجارت</p><span class="sh">🏭</span></div>
+    </div>
+  </div>
+  <nav class="nav" id="nav" hidden>
+    <button class="ni" data-soon="فروشگاه" type="button"><span class="ic">🛍</span>فروشگاه</button>
+    <button class="ni" data-v="map" type="button"><span class="ic">🌐</span>نقشه جهان</button>
+    <button class="ni home" data-v="home" type="button"><span class="ic">🏠</span>خانه</button>
+    <button class="ni" data-soon="بازار جهانی" type="button"><span class="ic">🏪</span>بازار جهانی</button>
+    <button class="ni" data-soon="ارتباطات" type="button"><span class="ic">💬</span>ارتباطات</button>
+  </nav>
+  <div class="toast" id="toast" hidden></div>
+  <div class="top" id="top">
+    <h1 id="title">یک کشور انتخاب کن 🌍</h1>
+    <div class="sub" id="sub">یکی از کشورهای فهرست را بردار و تأیید کن.</div>
+    <span class="badge" id="badge" hidden></span>
+  </div>
+  <div class="tabs" id="tabs">
+    <button class="tab" data-v="map" type="button">🗺 نقشه جهان</button>
+    <button class="tab" data-v="list" type="button">📋 فهرست کشورها</button>
+  </div>
+  <div class="mapview" id="mapview" hidden>
+    <div class="globewrap">
+      <canvas id="globe"></canvas>
+      <div class="chip" id="chip" hidden></div>
+      <div class="zoom">
+        <button id="zin" type="button" aria-label="بزرگ‌نمایی">+</button>
+        <button id="zout" type="button" aria-label="کوچک‌نمایی">−</button>
+        <button id="zhome" type="button" aria-label="کشور من">📍</button>
+      </div>
+      <div class="gmsg" id="gmsg"></div>
+    </div>
+    <div class="mycard" id="mycard" hidden>
+      <div id="myflag"></div>
+      <div>
+        <div class="t1" id="mt1"></div>
+        <div class="t2" id="mt2"></div>
+        <div class="t3" id="mt3"></div>
+      </div>
+    </div>
+  </div>
+  <div class="searchwrap" id="sw">
+    <input class="search" id="q" type="search" placeholder="جستجوی کشور…" autocomplete="off">
+  </div>
+  <div class="grid" id="list" role="listbox" aria-label="فهرست کشورها"></div>
+
+<script>
+  const RAW = `AF:افغانستان|AL:آلبانی|DZ:الجزایر|AD:آندورا|AO:آنگولا|AG:آنتیگوا و باربودا|AR:آرژانتین|AM:ارمنستان|AU:استرالیا|AT:اتریش|AZ:جمهوری آذربایجان|BS:باهاما|BH:بحرین|BD:بنگلادش|BB:باربادوس|BY:بلاروس|BE:بلژیک|BZ:بلیز|BJ:بنین|BT:بوتان|BO:بولیوی|BA:بوسنی و هرزگوین|BW:بوتسوانا|BR:برزیل|BN:برونئی|BG:بلغارستان|BF:بورکینافاسو|BI:بوروندی|CV:کیپ‌ورد|KH:کامبوج|CM:کامرون|CA:کانادا|CF:جمهوری آفریقای مرکزی|TD:چاد|CL:شیلی|CN:چین|CO:کلمبیا|KM:کومور|CG:کنگو|CD:جمهوری دموکراتیک کنگو|CR:کاستاریکا|CI:ساحل عاج|HR:کرواسی|CU:کوبا|CY:قبرس|CZ:چک|DK:دانمارک|DJ:جیبوتی|DM:دومینیکا|DO:جمهوری دومینیکن|EC:اکوادور|EG:مصر|SV:السالوادور|GQ:گینه استوایی|ER:اریتره|EE:استونی|SZ:اسواتینی|ET:اتیوپی|FJ:فیجی|FI:فنلاند|FR:فرانسه|GA:گابن|GM:گامبیا|GE:گرجستان|DE:آلمان|GH:غنا|GR:یونان|GD:گرانادا|GT:گواتمالا|GN:گینه|GW:گینه بیسائو|GY:گویان|HT:هائیتی|HN:هندوراس|HU:مجارستان|IS:ایسلند|IN:هند|ID:اندونزی|IR:ایران|IQ:عراق|IE:ایرلند|IL:اسرائیل|IT:ایتالیا|JM:جامائیکا|JP:ژاپن|JO:اردن|KZ:قزاقستان|KE:کنیا|KI:کیریباتی|KP:کره شمالی|KR:کره جنوبی|KW:کویت|KG:قرقیزستان|LA:لائوس|LV:لتونی|LB:لبنان|LS:لسوتو|LR:لیبریا|LY:لیبی|LI:لیختن‌اشتاین|LT:لیتوانی|LU:لوکزامبورگ|MG:ماداگاسکار|MW:مالاوی|MY:مالزی|MV:مالدیو|ML:مالی|MT:مالت|MH:جزایر مارشال|MR:موریتانی|MU:موریس|MX:مکزیک|FM:میکرونزی|MD:مولداوی|MC:موناکو|MN:مغولستان|ME:مونته‌نگرو|MA:مراکش|MZ:موزامبیک|MM:میانمار|NA:نامیبیا|NR:نائورو|NP:نپال|NL:هلند|NZ:نیوزیلند|NI:نیکاراگوئه|NE:نیجر|NG:نیجریه|MK:مقدونیه شمالی|NO:نروژ|OM:عمان|PK:پاکستان|PW:پالائو|PA:پاناما|PG:پاپوآ گینه نو|PY:پاراگوئه|PE:پرو|PH:فیلیپین|PL:لهستان|PT:پرتغال|QA:قطر|RO:رومانی|RU:روسیه|RW:رواندا|KN:سنت کیتس و نویس|LC:سنت لوسیا|VC:سنت وینسنت و گرنادین|WS:ساموآ|SM:سن مارینو|ST:سائوتومه و پرنسیپ|SA:عربستان سعودی|SN:سنگال|RS:صربستان|SC:سیشل|SL:سیرالئون|SG:سنگاپور|SK:اسلواکی|SI:اسلوونی|SB:جزایر سلیمان|SO:سومالی|ZA:آفریقای جنوبی|SS:سودان جنوبی|ES:اسپانیا|LK:سری‌لانکا|SD:سودان|SR:سورینام|SE:سوئد|CH:سوئیس|SY:سوریه|TJ:تاجیکستان|TZ:تانزانیا|TH:تایلند|TL:تیمور شرقی|TG:توگو|TO:تونگا|TT:ترینیداد و توباگو|TN:تونس|TR:ترکیه|TM:ترکمنستان|TV:تووالو|UG:اوگاندا|UA:اوکراین|AE:امارات متحده عربی|GB:بریتانیا|US:ایالات متحده|UY:اروگوئه|UZ:ازبکستان|VU:وانواتو|VE:ونزوئلا|VN:ویتنام|YE:یمن|ZM:زامبیا|ZW:زیمبابوه|PS:فلسطین|VA:واتیکان`;
+
+  const flag = (cc) => String.fromCodePoint(...[...cc].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+  const norm = (t) => t.replace(/ي/g, "ی").replace(/ك/g, "ک").replace(/[\u200c]/g, " ").trim();
+  const fa = (n) => Number(n).toLocaleString("fa");
+
+  // ---- پارامترهای ارسالی از ربات
+  const P = new URLSearchParams(location.search);
+  const season = P.get("season") ? Number(P.get("season")) : null;
+  const live = P.get("live") === "1";
+  const locked = P.get("locked") === "1";
+  const mine = (P.get("mine") || "").toUpperCase();
+  const counts = {};
+  (P.get("counts") || "").split(",").forEach(x => {
+    const [c, n] = x.split(".");
+    if (c && n) counts[c.toUpperCase()] = Number(n);
+  });
+  // دسته‌بندی (از ربات می‌آید؛ در نبودش مقدار پیش‌فرض)
+  const listParam = (k, def) => (P.get(k) ? P.get(k).split(",") : def).map(x => x.toUpperCase());
+  const PLUS = listParam("plus", ["US", "RU", "CN", "IR", "IL"]);
+  const PREM = listParam("prem", ["FR", "GB", "JP", "KP", "IN"]);
+  const tierOf = (code) => PLUS.includes(code) ? 0 : PREM.includes(code) ? 1 : 2;
+  const TIERS = ["💎 Premium Plus", "👑 Premium", "کشورهای عادی"];
+  // فقط وقتی سیزنی نیست یا سیزن فعلی است و قفل نشده، انتخاب ممکن است
+  const readonly = season !== null && (!live || locked);
+
+  const countries = RAW.split("|").map(x => {
+    const [code, name] = x.split(":");
+    return { code, name, flag: flag(code), key: norm(name), n: counts[code] || 0 };
+  }).sort((a, b) =>
+    (season !== null ? tierOf(a.code) - tierOf(b.code) : 0) ||
+    (b.code === mine) - (a.code === mine) ||
+    (readonly ? b.n - a.n : 0) ||
+    a.name.localeCompare(b.name, "fa"));
+
+  const tg = window.Telegram.WebApp;
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor("#0f1218");
+  tg.setBackgroundColor("#0f1218");
+
+  const el = (id) => document.getElementById(id);
+  if (season !== null) {
+    if (live) {
+      el("title").textContent = "سیزن " + fa(season) + " 🟢";
+      el("sub").textContent = locked ? "کشور شما در این سیزن ثبت شده است." : "کشورت را برای این سیزن انتخاب کن و تأیید بزن.";
+    } else {
+      el("title").textContent = "سیزن " + fa(season) + " (پایان‌یافته) 🏁";
+      el("sub").textContent = "فهرست کشورها و تعداد بازیکن هر کشور در این سیزن.";
+    }
+  }
+  if (mine) {
+    const m = countries.find(c => c.code === mine);
+    if (m) { el("badge").textContent = "کشور شما: " + m.name; el("badge").hidden = false; }
+  }
+
+  const list = el("list");
+  const search = el("q");
+  let selected = null;
+
+  function flagNode(c) {
+    const box = document.createElement("div");
+    box.className = "flag";
+    const img = new Image();
+    img.alt = "";
+    img.loading = "lazy";
+    const lc = c.code.toLowerCase();
+    let step = 0;
+    img.onerror = () => {
+      step++;
+      if (step === 1) img.src = "https://flagcdn.com/w80/" + lc + ".png";
+      else box.textContent = c.flag;
+    };
+    img.src = "flags/" + lc + ".png";
+    box.appendChild(img);
+    return box;
+  }
+
+  function render() {
+    const term = norm(search.value);
+    const shown = countries.filter(c => !term || c.key.includes(term));
+    list.innerHTML = "";
+    if (!shown.length) {
+      list.innerHTML = '<div class="empty">کشوری پیدا نشد.</div>';
+      return;
+    }
+    let lastTier = -1;
+    for (const c of shown) {
+      const t = tierOf(c.code);
+      if (season !== null && t !== lastTier) {
+        lastTier = t;
+        const h = document.createElement("div");
+        h.className = "sec";
+        h.textContent = TIERS[t];
+        const small = document.createElement("small");
+        small.textContent = "(" + fa(shown.filter(x => tierOf(x.code) === t).length) + ")";
+        h.appendChild(small);
+        list.appendChild(h);
+      }
+      const card = document.createElement("div");
+      card.className = "c" + (c.code === mine ? " me" : "") +
+        (season !== null && t < 2 ? " t-" + (t === 0 ? "plus" : "premium") : "");
+      card.setAttribute("role", "option");
+      card.tabIndex = 0;
+      card.setAttribute("aria-selected", String(selected === c.code));
+      if (readonly) card.setAttribute("aria-disabled", "true");
+
+      card.appendChild(flagNode(c));
+      const name = document.createElement("div");
+      name.className = "name";
+      name.textContent = c.name;
+      card.appendChild(name);
+
+      if (readonly) {
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.textContent = c.n ? fa(c.n) + " بازیکن" : "بدون بازیکن";
+        card.appendChild(meta);
+      }
+      if (c.code === mine) {
+        const b = document.createElement("span");
+        b.className = "mine";
+        b.textContent = "کشور شما";
+        card.appendChild(b);
+      }
+      if (!readonly) {
+        const pick = () => choose(c);
+        card.onclick = pick;
+        card.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } };
+      }
+      list.appendChild(card);
+    }
+  }
+
+  function choose(c) {
+    selected = c.code;
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    tg.MainButton.setText("تأیید: " + c.name);
+    tg.MainButton.show();
+    render();
+  }
+
+  function confirm() {
+    const c = countries.find(x => x.code === selected);
+    if (!c) return;
+    tg.sendData(JSON.stringify({ country: c.name, code: c.code, season }));
+  }
+
+  if (!readonly) tg.MainButton.onClick(confirm);
+  search.addEventListener("input", render);
+  render();
+
+  // ---------------- نقشه‌ی جهان (کره‌ی چرخان)
+  const GEO_URLS = [
+    "vendor/countries.geojson",
+    "https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/ne_110m_admin_0_countries.geojson",
+    "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson",
+  ];
+  // کشورهای کوچکی که در نقشه‌ی ساده نیستند: [عرض، طول]
+  const CITY = {
+    AD:[42.5,1.52], AG:[17.06,-61.8], BH:[26.07,50.55], BB:[13.19,-59.54], CV:[16.0,-24.0], KM:[-11.65,43.33],
+    DM:[15.41,-61.37], GD:[12.12,-61.68], KI:[1.45,173.0], LI:[47.16,9.55], MV:[3.2,73.2], MT:[35.9,14.4],
+    MH:[7.1,171.4], MU:[-20.3,57.55], FM:[6.9,158.2], MC:[43.74,7.42], NR:[-0.53,166.93], PW:[7.5,134.6],
+    KN:[17.34,-62.75], LC:[13.9,-60.98], VC:[13.25,-61.2], WS:[-13.76,-172.1], SM:[43.94,12.46],
+    ST:[0.19,6.61], SC:[-4.68,55.49], SG:[1.35,103.82], TO:[-21.18,-175.2], TV:[-8.52,179.2], VA:[41.9,12.45],
+  };
+  const byCode = {};
+  countries.forEach(c => { byCode[c.code] = c; });
+  const feats = {};
+  let land = [];
+  const cache = {};
+  let view = "list", W = 300, dpr = 1, rot = [-30, -25], zoom = 1, anim = null, raf = 0, mapReady = false, drag = null, chipTimer = 0;
+  const cvs = el("globe"), ctx = cvs.getContext("2d");
+  let proj = null, path = null;
+  const SPHERE = { type: "Sphere" };
+  const target = () => selected || mine || "";
+
+  const codeOf = (f) => {
+    const p = f.properties || {};
+    for (const k of ["ISO_A2_EH", "ISO_A2", "WB_A2"]) {
+      const v = p[k];
+      if (v && v !== "-99" && v.length === 2) return v.toUpperCase();
+    }
+    return "";
+  };
+
+  function pointOf(code) {
+    if (cache[code]) return cache[code];
+    let pt = null;
+    const f = feats[code];
+    if (f && window.d3) {
+      let g = f.geometry, best = f;
+      if (g.type === "MultiPolygon") {
+        let ba = -1;
+        for (const c of g.coordinates) {
+          const poly = { type: "Polygon", coordinates: c };
+          const a = d3.geoArea(poly);
+          if (a > ba) { ba = a; best = poly; }
+        }
+      }
+      pt = d3.geoCentroid(best);
+    } else if (CITY[code]) {
+      pt = [CITY[code][1], CITY[code][0]];
+    }
+    if (pt && !isNaN(pt[0]) && !isNaN(pt[1])) cache[code] = pt;
+    return cache[code] || null;
+  }
+
+  function flyTo(code) {
+    const pt = code && pointOf(code);
+    if (!pt) return;
+    const from = rot.slice();
+    let to0 = -pt[0];
+    const d = ((to0 - from[0] + 540) % 360) - 180;
+    to0 = from[0] + d;
+    anim = { t0: performance.now(), from, to: [to0, Math.max(-65, Math.min(65, -pt[1]))], dur: 1000 };
+  }
+
+  async function loadGeo() {
+    for (const u of GEO_URLS) {
+      try {
+        const r = await fetch(u);
+        if (!r.ok) continue;
+        const j = await r.json();
+        land = j.features || [];
+        for (const f of land) { f.__c = codeOf(f); if (f.__c) feats[f.__c] = f; }
+        return true;
+      } catch (e) { /* بعدی */ }
+    }
+    return false;
+  }
+
+  function fit() {
+    W = cvs.parentElement.clientWidth || 300;
+    dpr = window.devicePixelRatio || 1;
+    cvs.width = Math.round(W * dpr);
+    cvs.height = Math.round(W * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function draw(t) {
+    if (!proj) return;
+    const R = W / 2 * 0.9 * zoom;
+    proj.scale(R).translate([W / 2, W / 2]).rotate([rot[0], rot[1]]);
+    ctx.clearRect(0, 0, W, W);
+
+    const glow = ctx.createRadialGradient(W / 2, W / 2, R * 0.97, W / 2, W / 2, R * 1.13);
+    glow.addColorStop(0, "rgba(110,160,255,.35)");
+    glow.addColorStop(1, "rgba(110,160,255,0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(W / 2, W / 2, R * 1.13, 0, Math.PI * 2); ctx.fill();
+
+    const ocean = ctx.createRadialGradient(W * 0.4, W * 0.38, R * 0.1, W / 2, W / 2, R);
+    ocean.addColorStop(0, "#1c4a7a");
+    ocean.addColorStop(1, "#08182c");
+    ctx.beginPath(); path(SPHERE); ctx.fillStyle = ocean; ctx.fill();
+
+    ctx.beginPath(); path(d3.geoGraticule10());
+    ctx.strokeStyle = "rgba(255,255,255,.07)"; ctx.lineWidth = .6; ctx.stroke();
+
+    const tg = target();
+    let hit = null;
+    for (const f of land) {
+      if (f.__c && f.__c === tg) { hit = f; continue; }
+      ctx.beginPath(); path(f);
+      ctx.fillStyle = counts[f.__c] ? "rgba(232,196,108,.42)" : "#33475a";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(8,24,44,.9)"; ctx.lineWidth = .5; ctx.stroke();
+    }
+    if (hit) {
+      ctx.beginPath(); path(hit);
+      ctx.fillStyle = "#e8c46c"; ctx.fill();
+      ctx.strokeStyle = "#fff3cf"; ctx.lineWidth = 1.4; ctx.stroke();
+    }
+
+    const center = [-rot[0], -rot[1]];
+    const visible = (pt) => d3.geoDistance(pt, center) < 1.45;
+    // نقطه‌ی کشورهای دارای بازیکن (مخصوصاً کشورهای خیلی کوچک)
+    for (const code in counts) {
+      if (code === tg) continue;
+      const pt = pointOf(code);
+      if (!pt || !visible(pt)) continue;
+      const p = proj(pt);
+      ctx.beginPath(); ctx.arc(p[0], p[1], 3.2, 0, Math.PI * 2);
+      ctx.fillStyle = "#e8c46c"; ctx.fill();
+    }
+    // پین کشور من + حلقه‌ی ضربان
+    const tp = tg && pointOf(tg);
+    if (tp && visible(tp)) {
+      const p = proj(tp);
+      const ph = ((t || 0) % 1800) / 1800;
+      ctx.beginPath(); ctx.arc(p[0], p[1], 6 + ph * 22, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(255,243,207," + (1 - ph).toFixed(2) + ")"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(p[0], p[1], 5.5, 0, Math.PI * 2);
+      ctx.fillStyle = "#fff"; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = "#e8c46c"; ctx.stroke();
+      const nm = byCode[tg] ? byCode[tg].name : "";
+      if (nm) {
+        ctx.font = "600 14px Vazirmatn, Tahoma, sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+        ctx.lineJoin = "round"; ctx.lineWidth = 4; ctx.strokeStyle = "rgba(8,12,20,.9)";
+        ctx.strokeText(nm, p[0], p[1] - 12);
+        ctx.fillStyle = "#fff3cf"; ctx.fillText(nm, p[0], p[1] - 12);
+      }
+    }
+  }
+
+  function frame(t) {
+    if (view !== "map") { raf = 0; return; }
+    if (anim) {
+      const k = Math.min(1, (t - anim.t0) / anim.dur);
+      const e = 1 - Math.pow(1 - k, 3);
+      rot = [anim.from[0] + (anim.to[0] - anim.from[0]) * e, anim.from[1] + (anim.to[1] - anim.from[1]) * e];
+      if (k >= 1) anim = null;
+    }
+    draw(t);
+    raf = requestAnimationFrame(frame);
+  }
+
+  function showChip(text) {
+    const chip = el("chip");
+    chip.textContent = text; chip.hidden = false;
+    clearTimeout(chipTimer);
+    chipTimer = setTimeout(() => { chip.hidden = true; }, 2600);
+  }
+
+  function tapAt(e) {
+    if (!proj) return;
+    const r = cvs.getBoundingClientRect();
+    const ll = proj.invert([e.clientX - r.left, e.clientY - r.top]);
+    if (!ll || isNaN(ll[0]) || d3.geoDistance(ll, [-rot[0], -rot[1]]) > Math.PI / 2) return;
+    const f = land.find(x => d3.geoContains(x, ll));
+    const c = f && byCode[f.__c];
+    if (!c) return;
+    showChip(c.name + (counts[c.code] ? " — " + fa(counts[c.code]) + " بازیکن" : ""));
+  }
+
+  function updateCard() {
+    const code = target();
+    const c = code && byCode[code];
+    el("mycard").hidden = !c;
+    if (!c) return;
+    const box = el("myflag");
+    box.innerHTML = "";
+    box.appendChild(flagNode(c));
+    el("mt1").textContent = mine === code ? "کشور شما" : "کشور انتخابی (هنوز تأیید نشده)";
+    el("mt2").textContent = c.name;
+    el("mt3").textContent = TIERS[tierOf(code)];
+  }
+
+  function initMap() {
+    if (mapReady) return;
+    mapReady = true;
+    if (!window.d3) { el("gmsg").textContent = "بارگذاری نقشه ممکن نشد. اینترنت را بررسی کنید."; return; }
+    proj = d3.geoOrthographic().clipAngle(90).precision(0.5);
+    path = d3.geoPath(proj, ctx);
+    el("gmsg").textContent = "در حال بارگذاری نقشه…";
+    flyTo(target());
+    loadGeo().then(ok => {
+      el("gmsg").textContent = ok ? "" : "نقشه بارگذاری نشد؛ فقط موقعیت کشور نمایش داده می‌شود.";
+      flyTo(target());
+    });
+
+    cvs.addEventListener("pointerdown", e => {
+      cvs.setPointerCapture(e.pointerId);
+      drag = { x: e.clientX, y: e.clientY, rot: rot.slice(), moved: false };
+      anim = null;
+    });
+    cvs.addEventListener("pointermove", e => {
+      if (!drag) return;
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (Math.abs(dx) + Math.abs(dy) > 5) drag.moved = true;
+      const k = 57.3 / (W / 2 * 0.9 * zoom);
+      rot = [drag.rot[0] + dx * k, Math.max(-90, Math.min(90, drag.rot[1] - dy * k))];
+    });
+    const end = e => { if (drag && !drag.moved) tapAt(e); drag = null; };
+    cvs.addEventListener("pointerup", end);
+    cvs.addEventListener("pointercancel", () => { drag = null; });
+    el("zin").onclick = () => { zoom = Math.min(4, zoom * 1.35); };
+    el("zout").onclick = () => { zoom = Math.max(0.7, zoom / 1.35); };
+    el("zhome").onclick = () => { zoom = 1; flyTo(target()); };
+    window.addEventListener("resize", () => { if (view === "map") fit(); });
+  }
+
+  // ---------------- خانه
+  const GAME = {
+    cash: 11685537, income: 750000, power: 0, elecGen: 0, elecUse: 0, level: 1,
+    // کار در جریان (نمایشی؛ برای حذف null بگذارید)
+    job: { title: "ساخت نیروگاه بادی", secs: 17 * 60 + 36, total: 20 * 60 },
+  };
+  const qn = (k, d) => (P.get(k) !== null && !isNaN(Number(P.get(k))) ? Number(P.get(k)) : d);
+  GAME.cash = qn("cash", GAME.cash); GAME.income = qn("inc", GAME.income);
+  GAME.power = qn("pow", GAME.power); GAME.level = qn("lvl", GAME.level);
+  const endsAt = P.get("ends") ? Number(P.get("ends")) * 1000 : null;
+  const jobEnd = GAME.job ? Date.now() + GAME.job.secs * 1000 : 0;
+  // فصل‌های بازی (هر کدام ۲۴ ساعت). متن اثرها نمایشی است.
+  const PHASES = [
+    { n: "بهار", fx: "درآمد ۵٪ بیشتر" },
+    { n: "تابستان", fx: "بدون اثر بر اقتصاد" },
+    { n: "پاییز", fx: "بدون اثر بر اقتصاد" },
+    { n: "زمستان", fx: "مصرف برق ۱۰٪ بیشتر" },
+  ];
+  const en = (n) => Number(n).toLocaleString("en-US");
+  function dur(ms) {
+    let s = Math.max(0, Math.floor(ms / 1000));
+    const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+    if (d) return d + " روز و " + h + " ساعت";
+    if (h) return h + " ساعت و " + m + " دقیقه";
+    return m + " دقیقه و " + (s % 60) + " ثانیه";
+  }
+  function toast(t) {
+    const x = el("toast");
+    x.textContent = t; x.hidden = false;
+    clearTimeout(toast.t);
+    toast.t = setTimeout(() => { x.hidden = true; }, 1800);
+  }
+  function buildHome() {
+    const c = byCode[mine];
+    if (!c) return;
+    const w = season !== null ? "World " + season : "World";
+    el("hflag").innerHTML = ""; el("hflag").appendChild(flagNode(c));
+    el("hflag").firstChild.classList.add("sm");
+    el("havatar").innerHTML = "";
+    el("havatar").appendChild(flagNode(c));
+    el("havatar").firstChild.classList.add("lg");
+    const lv = document.createElement("div"); lv.className = "lvl"; lv.textContent = GAME.level;
+    el("havatar").appendChild(lv);
+    el("htitle").textContent = c.name + " — " + w;
+    el("hworld1").textContent = w; el("hworld2").textContent = w;
+    el("hinc").textContent = "درآمد روزانه: $" + en(GAME.income);
+    el("hcash").textContent = "$" + en(GAME.cash);
+    el("hpow").textContent = en(GAME.power);
+    const bal = GAME.elecGen - GAME.elecUse;
+    el("hel").textContent = en(Math.abs(bal)) + (bal >= 0 ? "+" : "−");
+    el("helsub").textContent = en(GAME.elecUse) + " از " + en(GAME.elecGen);
+    const bgp = P.get("bg");
+    if (bgp && /^https:\/\//i.test(bgp)) {
+      el("hero").style.background =
+        'linear-gradient(180deg, rgba(10,14,20,.30), rgba(10,14,20,.55)), url("' +
+        bgp.replace(/["\\\r\n]/g, "") + '") center / cover no-repeat #101a24';
+    }
+    el("hjob").hidden = !GAME.job;
+    if (GAME.job) el("hjn").textContent = GAME.job.title;
+    tickHome();
+  }
+  function tickHome() {
+    const now = Date.now();
+    el("hend").textContent = season === null ? "" :
+      !live ? "این سیزن تمام شده است" :
+      endsAt ? "پایانِ فصل تا " + dur(endsAt - now) : "";
+    const day = 86400000, idx = Math.floor(now / day) % 4, left = day - (now % day);
+    el("hwx").textContent = PHASES[idx].n;
+    el("hfx").textContent = PHASES[idx].fx;
+    el("hnext").textContent = PHASES[(idx + 1) % 4].n + " تا " + dur(left) + "  ←";
+    if (GAME.job) {
+      const rem = Math.max(0, jobEnd - now);
+      el("hjn").textContent = GAME.job.title + " — " + (rem ? dur(rem) : "تمام شد");
+      el("hjbar").style.width = Math.min(100, (1 - rem / (GAME.job.total * 1000)) * 100) + "%";
+    }
+  }
+  setInterval(() => { if (view === "home") tickHome(); }, 1000);
+
+  const hasMine = !!(mine && byCode[mine]);
+
+  function setView(v) {
+    if (v === "home" && !hasMine) v = "list";
+    view = v;
+    el("homeview").hidden = v !== "home";
+    el("mapview").hidden = v !== "map";
+    el("list").hidden = v !== "list";
+    el("sw").hidden = v !== "list";
+    el("top").hidden = v === "home";
+    // کاربری که هنوز کشور ندارد تب‌های ساده می‌بیند؛ بقیه نوار پایین
+    el("tabs").hidden = hasMine || v === "home";
+    el("nav").hidden = !hasMine;
+    document.querySelectorAll(".tab").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+    document.querySelectorAll(".ni[data-v]").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+    if (v === "home") buildHome();
+    if (v === "map") {
+      initMap();
+      fit();
+      updateCard();
+      if (!anim && proj) flyTo(target());
+      if (!raf) raf = requestAnimationFrame(frame);
+    }
+    window.scrollTo(0, 0);
+  }
+  document.querySelectorAll(".tab[data-v], .ni[data-v]").forEach(b => { b.onclick = () => setView(b.dataset.v); });
+  document.querySelectorAll("[data-soon]").forEach(b => { b.onclick = () => toast(b.dataset.soon + " — به‌زودی 🚧"); });
+  el("hmenu").onclick = () => setView("list");
+  el("havatar").onclick = () => setView("map");
+  el("hcup").onclick = () => toast("رتبه‌بندی — به‌زودی 🚧");
+  el("hbell").onclick = () => toast("اعلان‌ها — به‌زودی 🚧");
+  el("hgoal").onclick = () => toast("اهداف — به‌زودی 🚧");
+
+  const pv = P.get("view");
+  setView(pv === "map" ? "map" : pv === "list" ? "list" : hasMine ? "home" : "list");
+</script>
+</body>
+</html>
