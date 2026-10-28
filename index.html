@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>انتخاب کشور</title>
+<!-- اول نسخه‌ی خودِ هاست (پوشه‌ی vendor)، اگر نبود از اینترنت جهانی -->
+<script src="vendor/telegram-web-app.js"></script>
+<script>window.Telegram || document.write('<script src="https://telegram.org/js/telegram-web-app.js"><\/script>')</script>
+<script src="vendor/d3.min.js"></script>
+<script>window.d3 || document.write('<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"><\/script>')</script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="noseason" id="noseason" hidden>
+    <div class="nsi">🕐</div>
+    <h2>هنوز سیزنی وجود ندارد</h2>
+    <p>ادمین هنوز هیچ دنیایی (سیزن) نساخته است. وقتی سیزن شروع شود، از طریق ربات به شما خبر می‌دهیم و می‌توانید کشورتان را انتخاب کنید.</p>
+    <button type="button" id="nsclose">بستن</button>
+  </div>
+  <div class="cview" id="cview" hidden>
+    <div class="hbar">
+      <div class="hgrp">
+        <button class="ibtn" id="cmenu" type="button" aria-label="فهرست کشورها">☰</button>
+        <button class="ibtn gold" id="cgoal" type="button" aria-label="اهداف">🎯</button>
+        <span style="font-size:26px">👑</span>
+        <span style="font-size:20px;font-weight:700">OurangWorld</span>
+      </div>
+    </div>
+    <button class="backlnk" id="cback" type="button">‹ بازگشت و انتخاب کشور دیگر</button>
+    <div class="cbox head" id="chead">
+      <div id="cflag"></div>
+      <div class="cn" id="cname"></div>
+      <div class="cr" id="cregion"></div>
+    </div>
+    <div class="cbox">
+      <div class="row" id="ccaprow">پایتخت: <b id="ccap"></b></div>
+      <div class="row">دسترسی دریایی: <b id="csea"></b></div>
+      <div class="row">همسایه‌های زمینی: <b id="cnbn"></b><small id="cnbl"></small></div>
+      <div class="row">بلایای طبیعی: <b id="chaz"></b></div>
+    </div>
+    <div class="cbox warn">⚠ <b>این انتخاب نهایی و برگشت‌ناپذیر است.</b> تا پایانِ این Season تغییر یا خروج ممکن نیست.</div>
+    <button class="cbtn" id="cok" type="button"></button>
+  </div>
+  <div class="lobby" id="lobbyview" hidden>
+    <div class="lbar">
+      <div class="brand"><span style="font-size:26px">👑</span>OurangWorld</div>
+    </div>
+    <div class="shopcard" data-soon="فروشگاه">
+      <div class="ico">🛍</div>
+      <div><b>فروشگاه</b><span>کشور Premium و Premium Plus، اشتراک VIP و بسته‌ی پول</span></div>
+    </div>
+    <div class="shopcard" id="lscout" style="margin-top:10px">
+      <div class="ico">🧭</div>
+      <div><b>دیده‌بان</b><span>همه‌ی دنیاها را ببین، بدون نیاز به کشور</span></div>
+    </div>
+    <h2>یک دنیا انتخاب کن</h2>
+    <div class="lead">هر دنیا یک فصلِ جداست — روی دنیا بزن تا فهرست کشورهای همان فصل را ببینی. تا انتخابِ کشور هیچ‌چیز قطعی نمی‌شود.</div>
+    <div id="wlive"></div>
+    <div id="wpastbox" hidden>
+      <h2>دنیاهای گذشته</h2>
+      <div class="lead">این فصل‌ها تمام شده‌اند؛ فقط می‌توانی فهرست و تعداد بازیکن هر کشور را ببینی.</div>
+      <div id="wpast"></div>
+    </div>
+  </div>
+  <div class="homeview" id="homeview" hidden>
+    <div class="hbar">
+      <div class="hgrp">
+        <div class="avatar" id="havatar"></div>
+        <button class="ibtn gold" id="hcup" type="button" aria-label="رتبه‌بندی">🏆</button>
+        <button class="ibtn" id="hbell" type="button" aria-label="اعلان‌ها">🔔<span class="bdg" hidden></span></button>
+      </div>
+      <div class="hgrp">
+        <button class="ibtn" id="hmenu" type="button" aria-label="فهرست کشورها">☰</button>
+        <button class="ibtn gold" id="hgoal" type="button" aria-label="اهداف">🎯</button>
+        <span class="ibtn gold crown" aria-hidden="true">👑</span>
+      </div>
+    </div>
+    <div class="hero" id="hero">
+      <div class="hero-top">
+        <div class="htitle"><span id="hflag"></span><span id="htitle"></span></div>
+        <span class="pill">🌐 <span id="hworld1"></span></span>
+      </div>
+      <div class="panel">
+        <div class="cashrow">
+          <div class="cashtxt">
+            <div class="lbl">🪙 موجودی خزانه</div>
+            <div class="cash" id="hcash">$0</div>
+            <div class="inc" id="hinc"></div>
+          </div>
+          <div class="bigflag" id="hflagbig" aria-hidden="true"></div>
+        </div>
+        <hr>
+        <div class="stats">
+          <div class="stat"><div class="lbl">⚔ قدرت نظامی</div><div class="val" id="hpow">0</div></div>
+          <div class="stat mid"><div class="lbl">باقی‌مانده انرژی ⚡</div><div class="val green" id="hel">0+</div><div class="sub" id="helsub">0 از 0</div></div>
+          <div class="safe">
+          <svg viewBox="0 0 96 84" width="88" height="78" aria-hidden="true">
+            <defs>
+              <linearGradient id="lkG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe49a"/><stop offset="1" stop-color="#b9801f"/></linearGradient>
+              <linearGradient id="lkS" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8e97a6"/><stop offset=".5" stop-color="#eef2f7"/><stop offset="1" stop-color="#8e97a6"/></linearGradient>
+            </defs>
+            <g stroke="#7a5214" stroke-width="1.4" fill="url(#lkG)">
+              <ellipse cx="74" cy="72" rx="16" ry="6"/><ellipse cx="74" cy="65" rx="16" ry="6"/><ellipse cx="74" cy="58" rx="16" ry="6"/><ellipse cx="74" cy="51" rx="16" ry="6"/>
+            </g>
+            <path d="M22 40V27a14 14 0 0 1 28 0v13" fill="none" stroke="url(#lkS)" stroke-width="7" stroke-linecap="round"/>
+            <rect x="12" y="38" width="48" height="40" rx="9" fill="url(#lkG)" stroke="#7a5214" stroke-width="1.4"/>
+            <circle cx="36" cy="55" r="5.5" fill="#3a2a08"/><rect x="34" y="57" width="4" height="11" rx="2" fill="#3a2a08"/>
+          </svg>
+          </div>
+        </div>
+        <hr>
+        <div class="rowx"><b>🌐 <span id="hworld2"></span></b><span class="muted" id="hend"></span></div>
+        <hr>
+        <div class="season">
+          <div class="stxt">
+            <b><span>🕒</span><span id="hwicon">🌿</span><span id="hwx"></span></b>
+            <div class="muted" id="hnext"></div>
+          </div>
+          <button class="fxbtn" id="hfxbtn" type="button"><span class="chev">›</span><span id="hfx"></span><span class="cal">🗓</span></button>
+        </div>
+      </div>
+    </div>
+    <div class="job" id="hjob" hidden>
+      <div class="jt">در جریان</div>
+      <div class="jn" id="hjn"></div>
+      <div class="bar"><i id="hjbar"></i></div>
+    </div>
+    <div class="tiles big">
+      <div class="tile t-war" id="tilewar"><div class="trow"><h3>جنگ</h3><span class="go">›</span></div><p>حمله، عملیاتِ هوایی، نیروی دریایی و آبی‌خاکی</p></div>
+      <div class="tile t-dev" id="tileinfra"><span class="badge" id="infbadge" hidden>کمبود برق</span><div class="trow"><h3>توسعه</h3><span class="go">›</span></div><p>ساخت‌وساز، زیرساخت، برق و منابع</p></div>
+    </div>
+    <div class="tiles more">
+      <div class="tile row t-eco" id="tileeco"><span class="badge" id="ecobadge" aria-label="آمادهٔ سرمایه‌گذاری" hidden>آمادهٔ سرمایه‌گذاری</span><span class="mi green">📊</span><div><h4>اقتصاد</h4><p>سرمایه‌گذاری و پرکردنِ خزانه</p></div></div>
+      <div class="tile row t-army" id="tilearmy"><span class="mi blue">🛡️</span><div><h4>ارتش</h4><p>ساخت، تحقیق و جایِ یگان‌ها</p></div></div>
+      <div class="tile row t-dip" id="tiledip"><span class="mi purple">📜</span><div><h4>دیپلماسی</h4><p>پیمان، مرز و روابط</p></div></div>
+      <div class="tile row t-market" id="tilemarket"><span class="mi gold">🏪</span><div><h4>بازار جهانی</h4><p>قیمتِ روز، خرید و فروش</p></div></div>
+      <div class="tile row" id="tileloan"><span class="mi gold">💸</span><div><h4>وام</h4><p>وام دادن و گرفتن</p></div></div>
+      <div class="tile row" data-soon="آمار کشور"><span class="mi teal">📈</span><div><h4>آمار کشور</h4><p>رفاه، امنیت و پاداش</p></div></div>
+    </div>
+    <div class="terr">
+      <div class="terr-top">
+        <span class="mi ring">🔗</span>
+        <div>
+          <h3>سرزمین‌های تحت فرمان</h3>
+          <p>هنوز خاکی زیر فرمان ما نیست، فرمانده. پایتخت دشمن را بگیرید و نگه دارید تا کشورش به فرمان ما درآید و ٪۲۰ درآمدش به خزانه ما برسد.</p>
+        </div>
+      </div>
+      <button class="terr-btn" id="warhq" type="button">⚔ ستاد جنگ</button>
+    </div>
+  </div>
+  <div class="rankview" id="rankview" hidden>
+    <div class="hbar">
+      <div class="hgrp">
+        <div class="avatar" id="ravatar"></div>
+        <button class="ibtn gold" id="rcup" type="button" aria-label="رتبه‌بندی">🏆</button>
+        <button class="ibtn" id="rbell" type="button" aria-label="اعلان‌ها">🔔<span class="bdg" hidden></span></button>
+      </div>
+      <div class="hgrp">
+        <button class="ibtn" id="rmenu" type="button" aria-label="خانه">☰</button>
+        <button class="ibtn gold" id="rgoal" type="button" aria-label="اهداف">🎯</button>
+        <span style="font-size:26px">👑</span>
+      </div>
+    </div>
+    <div class="rach" data-soon="دستاوردها"><b>🏆 دستاوردها</b><span class="money" id="rcash"></span><span class="go">‹</span></div>
+    <div class="rcard">
+      <div class="rt"><span>🏆 جدول جهانی</span><span class="lf"><span class="livepill" id="rlive"></span><button class="qbtn" id="rhelp" type="button">?</button></span></div>
+      <div class="rme"><div id="rflag"></div><div><div class="nm" id="rname"></div><div class="rk">رتبه <b id="rrank">—</b><small id="rof"></small></div><span class="tierchip" id="rtier"></span></div></div>
+      <div class="rst" id="rst"></div>
+      <div class="rfoot">🕒 <span id="rend"></span></div>
+    </div>
+    <div class="rbox"><h4>🏁 پایان فصل با ادمین</h4><p>فصل زمان ثابتی ندارد؛ ادمین بازی آن را دستی می‌بندد. رتبه‌های همان لحظه نتیجه‌ی نهایی و مبنای جوایز پایان فصل است.</p></div>
+    <div class="rtabs" id="rtabs"></div>
+    <div class="rbox dash">🏆 جمع وزن‌دار پنج دسته. هر دسته نسبت به نفر اول همان دسته سنجیده می‌شود، پس یک عدد غول‌آسا بقیه را نمی‌بلعد.</div>
+    <div class="podium" id="rpod"></div>
+    <div class="prizes">
+      <h4>👑 جوایز پایان فصل</h4>
+      <div class="prow"><span class="medal">1</span><span>💎 کشور Premium Plus</span></div>
+      <div class="prow"><span class="medal m2">2</span><span>👑 کشور Premium</span></div>
+      <div class="prow"><span class="medal m3">3</span><span>🪙 بسته پول $10,000,000</span></div>
+    </div>
+    <div id="rlist"></div>
+  </div>
+  <div class="notifview" id="notifview" hidden>
+    <div class="hbar">
+      <div class="hgrp">
+        <div class="avatar" id="navatar"></div>
+        <button class="ibtn gold" id="ncup" type="button" aria-label="رتبه‌بندی">🏆</button>
+        <button class="ibtn" id="nbell" type="button" aria-label="اعلان‌ها">🔔</button>
+      </div>
+      <div class="hgrp">
+        <button class="ibtn" id="nmenu" type="button" aria-label="خانه">☰</button>
+        <button class="ibtn gold" id="ngoal" type="button" aria-label="اهداف">🎯</button>
+        <span style="font-size:26px">👑</span>
+      </div>
+    </div>
+    <div class="rach" id="nbar"><b>🔔 اعلان‌ها</b><span class="money" id="ncash"></span><span class="go">‹</span></div>
+    <div class="nhead"><span class="cnt" id="ncnt"></span><button id="nclear" type="button">پاک کردن همه</button></div>
+    <div id="nlist"></div>
+  </div>
+  <div class="ecoview" id="ecoview" hidden>
+    <div class="hbar">
+      <div class="hgrp">
+        <div class="avatar" id="eavatar"></div>
+        <button class="ibtn gold" id="ecup" type="button" aria-label="رتبه‌بندی">🏆</button>
+        <button class="ibtn" id="ebell" type="button" aria-label="اعلان‌ها">🔔</button>
+      </div>
+      <div class="hgrp">
+        <button class="ibtn" id="emenu" type="button" aria-label="فهرست">☰</button>
+        <button class="ibtn gold" id="egoal" type="button" aria-label="اهداف">🎯</button>
+        <span style="font-size:26px">👑</span>
+      </div>
+    </div>
+    <div class="rach" id="ebar"><b>📊 اقتصاد</b><span class="money" id="ecashbar"></span><span class="go">‹</span></div>
+    <div id="ebody"></div>
+  </div>
+  <div class="ecoview" id="infraview" hidden>
+    <div class="hbar">
+      <div class="hgrp">
+        <div class="avatar" id="iavatar"></div>
+        <button class="ibtn gold" id="icup" type="button" aria-label="رتبه‌بندی">🏆</button>
+        <button class="ibtn" id="ibell" type="button" aria-label="اعلان‌ها">🔔</button>
+      </div>
+      <div class="hgrp">
+        <button class="ibtn" id="imenu" type="button" aria-label="فهرست">☰</button>
+        <button class="ibtn gold" id="igoal" type="button" aria-label="اهداف">🎯</button>
+        <span style="font-size:26px">👑</span>
+      </div>
+    </div>
+    <div class="rach" id="ibar"><b>🏗️ زیرساخت</b><span class="money" id="icashbar"></span><span class="go">‹</span></div>
+    <div id="ibody"></div>
+  </div>
+  <div class="ecoview" id="armyview" hidden>
+    <div class="hbar">
+      <div class="hgrp">
+        <div class="avatar" id="aavatar"></div>
+        <button class="ibtn gold" id="acup" type="button" aria-label="رتبه‌بندی">🏆</button>
+        <button class="ibtn" id="abell" type="button" aria-label="اعلان‌ها">🔔</button>
+      </div>
+      <div class="hgrp">
+        <button class="ibtn" id="amenu" type="button" aria-label="فهرست">☰</button>
+        <button class="ibtn gold" id="agoal" type="button" aria-label="اهداف">🎯</button>
+        <span style="font-size:26px">👑</span>
+      </div>
+    </div>
+    <div class="rach" id="abar"><b>🛡 ارتش</b><span class="money" id="acashbar"></span><span class="go">‹</span></div>
+    <div id="abody"></div>
+  </div>
+  <div class="ecoview" id="warview" hidden>
+    <div class="hbar">
+      <div class="hgrp">
+        <div class="avatar" id="wavatar"></div>
+        <button class="ibtn gold" id="wcup" type="button" aria-label="رتبه‌بندی">🏆</button>
+        <button class="ibtn" id="wbell" type="button" aria-label="اعلان‌ها">🔔</button>
+      </div>
+      <div class="hgrp">
+        <button class="ibtn" id="wmenu" type="button" aria-label="فهرست">☰</button>
+        <button class="ibtn gold" id="wgoal" type="button" aria-label="اهداف">🎯</button>
+        <span style="font-size:26px">👑</span>
+      </div>
+    </div>
+    <div class="wrbar">
+      <button class="go" id="wback" type="button" aria-label="بازگشت">→</button>
+      <b id="wtitle">⚔ جنگ</b>
+      <button class="whelp" id="whelp" type="button" aria-label="راهنما">?</button>
+      <span class="money" id="wcash"></span>
+    </div>
+    <div id="wstat"></div>
+    <div class="wtabs" id="wtabs"></div>
+    <div id="wpane"></div>
+  </div>
+  <div class="ecoview" id="shopview" hidden>
+    <div class="hbar">
+      <div class="hgrp">
+        <div class="avatar" id="savatar2"></div>
+        <button class="ibtn gold" id="shcup" type="button" aria-label="رتبه‌بندی">🏆</button>
+        <button class="ibtn" id="shbell" type="button" aria-label="اعلان‌ها">🔔</button>
+      </div>
+      <div class="hgrp">
+        <button class="ibtn" id="shmenu" type="button" aria-label="فهرست">☰</button>
+        <button class="ibtn gold" id="shgoal" type="button" aria-label="اهداف">🎯</button>
+        <span style="font-size:26px">👑</span>
+      </div>
+    </div>
+    <div class="shbar">
+      <button class="go" id="shback" type="button" aria-label="بازگشت">→</button>
+      <b id="shtitle">🛍 فروشگاه</b>
+      <span class="money" id="shcash"></span>
+    </div>
+    <div class="shlead">هر مورد را بزنید تا جزئیاتش را ببینید، فرمانده؛ تا تأیید نکنید، سفارشی ثبت نمی‌شود.</div>
+    <div id="shlist"></div>
+  </div>
+  <div class="ecoview" id="marketview" hidden>
+    <div class="hbar">
+      <div class="hgrp">
+        <div class="avatar" id="mavatar"></div>
+        <button class="ibtn gold" id="mcup" type="button" aria-label="رتبه‌بندی">🏆</button>
+        <button class="ibtn" id="mbell" type="button" aria-label="اعلان‌ها">🔔</button>
+      </div>
+      <div class="hgrp">
+        <button class="ibtn" id="mmenu" type="button" aria-label="فهرست">☰</button>
+        <button class="ibtn gold" id="mgoal" type="button" aria-label="اهداف">🎯</button>
+        <span style="font-size:26px">👑</span>
+      </div>
+    </div>
+    <div class="mkbar">
+      <button class="go" id="mkback" type="button" aria-label="بازگشت">→</button>
+      <b id="mktitle">🏪 بازار جهانی</b>
+      <span class="money" id="mkcash"></span>
+    </div>
+    <div id="mkhead"></div>
+    <div class="mktabs" id="mktabs"></div>
+    <div id="mkpane"></div>
+  </div>
+  <div class="ecoview" id="loanview" hidden>
+    <div class="mkbar">
+      <button class="go" id="lnback" type="button" aria-label="بازگشت">→</button>
+      <b id="lntitle">💸 وام</b>
+      <span class="money" id="lncash"></span>
+    </div>
+    <div id="lnbody"></div>
+  </div>
+  <div class="ecoview" id="dipview" hidden>
+    <div class="mkbar">
+      <button class="go" id="dpback" type="button" aria-label="بازگشت">→</button>
+      <b id="dptitle">📜 دیپلماسی</b>
+      <span class="money" id="dpcash"></span>
+    </div>
+    <div id="dpbody"></div>
+  </div>
+  <div class="scoutview" id="scoutview" hidden>
+    <div class="hbar">
+      <div class="hgrp" id="sgrp">
+        <div class="avatar" id="savatar"></div>
+        <button class="ibtn gold" id="scup" type="button" aria-label="رتبه‌بندی">🏆</button>
+        <button class="ibtn" id="sbell" type="button" aria-label="اعلان‌ها">🔔<span class="bdg" hidden></span></button>
+      </div>
+      <div class="hgrp">
+        <button class="ibtn" id="smenu" type="button" aria-label="فهرست">☰</button>
+        <button class="ibtn gold" id="sgoal" type="button" aria-label="اهداف">🎯</button>
+        <span style="font-size:26px">👑</span>
+      </div>
+    </div>
+    <div class="sh1">
+      <h2><svg viewBox="0 0 24 24" fill="none" stroke="#e8c46c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M15.8 8.2l-2.1 5.5-5.5 2.1 2.1-5.5z"/></svg>دیده‌بان</h2>
+      <button class="qbtn" id="shelp" type="button" aria-label="راهنما">?</button>
+    </div>
+    <div class="slead">همه جبهه‌های جهان، بدون نیاز به کشور. نیروها محرمانه می‌ماند.</div>
+    <div class="stabs" id="stabs"></div>
+    <div id="slist"></div>
+  </div>
+  <div class="commview" id="commview" hidden>
+    <div class="cmhero">
+      <div class="hbar">
+        <div class="hgrp">
+          <div class="avatar" id="coavatar"></div>
+          <button class="ibtn gold" id="cocup" type="button" aria-label="رتبه‌بندی">🏆</button>
+          <button class="ibtn" id="cobell" type="button" aria-label="اعلان‌ها">🔔<span class="bdg" hidden></span></button>
+        </div>
+        <div class="hgrp">
+          <button class="ibtn" id="comenu" type="button" aria-label="فهرست">☰</button>
+          <button class="ibtn gold" id="cogoal" type="button" aria-label="اهداف">🎯</button>
+          <span style="font-size:26px">👑</span>
+        </div>
+      </div>
+      <div class="cmbar" id="cobar"><span class="go">›</span><b>💬 ارتباطات</b><span class="money" id="cocash"></span></div>
+      <div class="cmtabs" id="cotabs">
+        <button class="cmtab" data-t="st" type="button"><svg viewBox="0 0 24 24"><path d="M3 10v4a1 1 0 0 0 1 1h2l4 4V5L6 9H4a1 1 0 0 0-1 1zm13.5 2A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>بیانیه‌ها</button>
+        <button class="cmtab" data-t="nw" type="button">📰 اخبار</button>
+        <button class="cmtab" data-t="ch" type="button">💬 گفتگو</button>
+        <button class="cmtab" data-t="gr" type="button">👥 گروه‌ها</button>
+      </div>
+      <div class="cmcomp" id="cocomp">
+        <button class="cmpost" id="copost" type="button"><svg viewBox="0 0 24 24"><path d="M3 10v4a1 1 0 0 0 1 1h2l4 4V5L6 9H4a1 1 0 0 0-1 1zm13.5 2A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>بیانیه</button>
+        <span class="cmleft" id="coleft"></span>
+      </div>
+      <button class="cmnote" id="conote" type="button"></button>
+    </div>
+    <div id="cofeed"></div>
+  </div>
+  <div class="smask" id="comask" hidden></div>
+  <div class="sheet" id="cosheet" hidden>
+    <div class="grab"></div>
+    <div class="sh-head"><span>بیانیه‌ی جدید</span><button class="sx" id="cox" type="button" aria-label="بستن">✕</button></div>
+    <textarea class="cmta" id="cota" maxlength="280" placeholder="موضع کشورت را برای جهان اعلام کن…"></textarea>
+    <div class="cmmeta"><span id="cosub"></span><span id="cocnt"></span></div>
+    <button class="cmsend" id="cosend" type="button">انتشار بیانیه</button>
+  </div>
+  <div class="smask" id="lvmask" hidden></div>
+  <div class="sheet" id="lvsheet" hidden>
+    <div class="grab"></div>
+    <div class="sh-head"><span>ترک کشور</span><button class="sx" id="lvx" type="button" aria-label="بستن">✕</button></div>
+    <div class="lvbox">
+      <h4 id="lvt"></h4>
+      <p id="lvfree"></p>
+      <ul>
+        <li>کشور بازنشانی نمی‌شود و برای فرمانده بعدی آزاد می‌شود.</li>
+        <li id="lvback"></li>
+        <li>هر حساب یک خروج رایگان دارد و بیش از یکی ذخیره نمی‌شود؛ خروج رایگان وقتی برمی‌گردد که یک فصل را تا پایان در کشورتان بمانید. بدون آن، هر ۱۴ روز فقط یک خروج ممکن است.</li>
+      </ul>
+      <p>این دستور بازگشت ندارد.</p>
+    </div>
+    <div class="btns"><button class="yes" id="lvyes" type="button">بله، مطمئنم</button><button class="no" id="lvno" type="button">انصراف</button></div>
+  </div>
+  <div class="mmask" id="mmask" hidden></div>
+  <div class="mpanel" id="mpanel" hidden>
+    <button class="mitem" data-m="home" type="button"><span class="mi2">🏠</span>بازی</button>
+    <button class="mitem" data-m="profile" type="button"><span class="mi2">🎖</span>پرونده فرمانده</button>
+    <button class="mitem" data-m="scout" type="button"><span class="mi2">🧭</span>دیده‌بان</button>
+    <button class="mitem" data-m="archive" type="button"><span class="mi2">🗂</span>بایگانیِ فصل‌ها</button>
+    <button class="mitem" data-m="leave" type="button"><span class="mi2">⚠️</span>ترک کشور</button>
+  </div>
+  <nav class="nav" id="nav" hidden>
+    <button class="ni" data-v="shop" type="button"><span class="ic">🎁</span>فروشگاه</button>
+    <button class="ni" data-v="map" type="button"><span class="ic">🌐</span>نقشه جهان</button>
+    <button class="ni home" data-v="home" type="button"><span class="ic">🏠</span>خانه</button>
+    <button class="ni" data-v="market" type="button"><span class="ic">📰<b class="nb" id="mkbadge" hidden></b></span>بازار جهانی</button>
+    <button class="ni" data-v="comm" type="button"><span class="ic">💬</span>ارتباطات</button>
+  </nav>
+  <div class="toast" id="toast" hidden></div>
+  <div class="top" id="top">
+    <h1 id="title">یک کشور انتخاب کن 🌍</h1>
+    <div class="sub" id="sub">یکی از کشورهای فهرست را بردار و تأیید کن.</div>
+    <span class="badge" id="badge" hidden></span>
+  </div>
+  <div class="tabs" id="tabs">
+    <button class="tab" data-v="map" type="button">🗺 نقشه جهان</button>
+    <button class="tab" data-v="list" type="button">📋 فهرست کشورها</button>
+  </div>
+  <div class="mapview" id="mapview" hidden>
+    <div class="globewrap">
+      <canvas id="globe"></canvas>
+      <div class="chip" id="chip" hidden></div>
+      <div class="zoom">
+        <button id="zin" type="button" aria-label="بزرگ‌نمایی">+</button>
+        <button id="zout" type="button" aria-label="کوچک‌نمایی">−</button>
+        <button id="zhome" type="button" aria-label="کشور من">📍</button>
+      </div>
+      <div class="gmsg" id="gmsg"></div>
+    </div>
+    <div class="mycard" id="mycard" hidden>
+      <div id="myflag"></div>
+      <div>
+        <div class="t1" id="mt1"></div>
+        <div class="t2" id="mt2"></div>
+        <div class="t3" id="mt3"></div>
+      </div>
+    </div>
+  </div>
+  <div class="searchwrap" id="sw">
+    <input class="search" id="q" type="search" placeholder="جستجوی کشور…" autocomplete="off">
+  </div>
+  <div class="grid" id="list" role="listbox" aria-label="فهرست کشورها"></div>
+
+<script src="app.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
